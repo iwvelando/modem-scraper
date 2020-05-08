@@ -25,9 +25,16 @@ func Scrape(config config.Configuration) (*ModemInformation, error) {
 	}
 	softwareInformation := scrapeSoftwareInformation(doc)
 
+	doc, err = getDocumentFromURL(config.IP + "/cmeventlog.html")
+	if err != nil {
+		return nil, err
+	}
+	eventLog := scrapeEventLogs(doc)
+
 	modemInformation := ModemInformation{
 		ConnectionStatus:    *connectionStatus,
 		SoftwareInformation: *softwareInformation,
+		EventLog:            eventLog,
 	}
 	// fmt.Printf("%# v", pretty.Formatter(modemInformation))
 

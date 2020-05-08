@@ -12,6 +12,7 @@ import (
 type ModemInformation struct {
 	ConnectionStatus    ConnectionStatus
 	SoftwareInformation SoftwareInformation
+	EventLog            []EventLog
 }
 
 // ToJSON converts ModemInformation to JSON string.
@@ -47,6 +48,12 @@ func (m ModemInformation) ToInfluxPoints() ([]*client.Point, error) {
 	points = append(points, influxPoints...)
 
 	influxPoints, err = m.SoftwareInformation.ToInfluxPoints()
+	if err != nil {
+		return nil, err
+	}
+	points = append(points, influxPoints...)
+
+	influxPoints, err = buildEventLogPoints(m.EventLog)
 	if err != nil {
 		return nil, err
 	}

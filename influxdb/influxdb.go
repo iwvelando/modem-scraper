@@ -31,7 +31,7 @@ func Publish(config config.InfluxDB, modemInformation scrape.ModemInformation) e
 
 	batchPoints, _ := client.NewBatchPoints(client.BatchPointsConfig{
 		Database:  config.Database,
-		Precision: "s",
+		Precision: "ns",
 	})
 	points, err := modemInformation.ToInfluxPoints()
 	if err != nil {
