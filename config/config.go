@@ -2,11 +2,21 @@ package config
 
 // Configuration holds all configuration for modem-scraper.
 type Configuration struct {
-	IP           string
-	PollSchedule string
-	MQTT         MQTT
-	InfluxDB     InfluxDB
-	BoltDB       BoltDB
+	Modem    Modem
+	Polling  Polling
+	MQTT     MQTT
+	InfluxDB InfluxDB
+	BoltDB   BoltDB
+}
+
+// Modem holds modem configuration
+type Modem struct {
+	Url string
+}
+
+// Polling holds polling configuration
+type Polling struct {
+	Schedule string
 }
 
 // MQTT holds MQTT connection configuration.
@@ -23,8 +33,7 @@ type MQTT struct {
 // InfluxDB holds InfluxDB connection configuration.
 type InfluxDB struct {
 	Enabled  bool
-	Hostname string
-	Port     string
+	Url      string
 	Database string
 	Username string
 	Password string

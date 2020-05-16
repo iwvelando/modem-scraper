@@ -13,19 +13,19 @@ import (
 
 // Scrape scrapes data from the modem.
 func Scrape(config config.Configuration) (*ModemInformation, error) {
-	doc, err := getDocumentFromURL(config.IP + "/cmconnectionstatus.html")
+	doc, err := getDocumentFromURL(config.Modem.Url + "/cmconnectionstatus.html")
 	if err != nil {
 		return nil, err
 	}
 	connectionStatus := scrapeConnectionStatus(doc)
 
-	doc, err = getDocumentFromURL(config.IP + "/cmswinfo.html")
+	doc, err = getDocumentFromURL(config.Modem.Url + "/cmswinfo.html")
 	if err != nil {
 		return nil, err
 	}
 	softwareInformation := scrapeSoftwareInformation(doc)
 
-	doc, err = getDocumentFromURL(config.IP + "/cmeventlog.html")
+	doc, err = getDocumentFromURL(config.Modem.Url + "/cmeventlog.html")
 	if err != nil {
 		return nil, err
 	}

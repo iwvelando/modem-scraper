@@ -16,11 +16,9 @@ import (
 func Publish(config config.InfluxDB, modemInformation scrape.ModemInformation) error {
 	start := time.Now()
 
-	addr := makeAddr(config.Hostname, config.Port)
-
-	fmt.Printf("Connecting to InfluxDB server [%s]...\n", addr)
+	fmt.Printf("Connecting to InfluxDB server [%s]...\n", config.Url)
 	influx, err := client.NewHTTPClient(client.HTTPConfig{
-		Addr:     addr,
+		Addr:     config.Url,
 		Username: config.Username,
 		Password: config.Password,
 	})

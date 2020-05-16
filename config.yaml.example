@@ -1,0 +1,43 @@
+# Modem configuration
+modem:
+  # URL pointing to the modem
+  url: http://192.168.100.1
+
+# Polling configuration
+polling:
+  # Cron schedule on which to poll, see https://godoc.org/github.com/robfig/cron 
+  schedule: "*/15 * * * *"
+
+# InfluxDB Configuration
+influxdb:
+  # Whether or not to submit data to InfluxDB
+  enabled: true
+  # URL where InfluxDB is listening on its HTTP API
+  url: http://localhost:8086
+  # InfluxDB database to use
+  database: modem
+  # Credentials for authentication (omit if unauthenticated)
+  username: user
+  password: pass
+
+# MQTT configuration
+mqtt:
+  # Whether or not to submit data to MQTT
+  enabled: true
+  # Hostname or IP where MQTT is running
+  hostname: localhost
+  # Listening port for MQTT
+  port: 1883
+  # Credentials for authentication
+  username: user
+  password: pass
+  # MQTT topic to use
+  topic: modem
+  # Client ID for MQTT communication
+  clientid: modem-scraper
+
+# BoltDB configuration
+boltdb:
+  # Local filesystem path where the BoltDB db file should reside
+  path: /var/lib/modem-scraper/modem-scraper.db
+

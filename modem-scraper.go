@@ -46,7 +46,7 @@ func main() {
 	}
 
 	c := cron.New()
-	c.AddFunc(configuration.PollSchedule, func() {
+	c.AddFunc(configuration.Polling.Schedule, func() {
 		fmt.Println("Waking up...")
 		modemInformation, err := scrape.Scrape(*configuration)
 		if err != nil {
