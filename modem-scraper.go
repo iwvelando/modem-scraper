@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/pdunnavant/modem-scraper/boltdb"
 	"github.com/pdunnavant/modem-scraper/config"
 	"github.com/pdunnavant/modem-scraper/influxdb"
 	"github.com/pdunnavant/modem-scraper/mqtt"
@@ -53,13 +54,29 @@ func main() {
 			return
 		}
 
-		err = influxdb.Publish(configuration.InfluxDB, *modemInformation)
+		modemInformation, err = boltdb.PruneEventLogs(configuration.BoltDB, *modemInformation)
 		if err != nil {
 			fmt.Println(err.Error())
 			return
 		}
 
-		err = mqtt.Publish(configuration.MQTT, *modemInformation)
+		if configuration.InfluxDB.Enabled {
+			err = influxdb.Publish(configuration.InfluxDB, *modemInformation)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		}
+
+		if configuration.MQTT.Enabled {
+			err = mqtt.Publish(configuration.MQTT, *modemInformation)
+			if err != nil {
+				fmt.Println(err.Error())
+				return
+			}
+		}
+
+		err = boltdb.UpdateEventLogs(configuration.BoltDB, *modemInformation)
 		if err != nil {
 			fmt.Println(err.Error())
 			return

@@ -3,7 +3,9 @@ module github.com/pdunnavant/modem-scraper
 go 1.12
 
 require (
+	github.com/OneOfOne/xxhash v1.2.7
 	github.com/PuerkitoBio/goquery v1.5.0
+	github.com/boltdb/bolt v1.3.1
 	github.com/eclipse/paho.mqtt.golang v1.2.0
 	github.com/influxdata/influxdb1-client v0.0.0-20190809212627-fc22c7df067e
 	github.com/karrick/godirwalk v1.10.12 // indirect
