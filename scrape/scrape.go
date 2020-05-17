@@ -7,42 +7,43 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 
-	// "github.com/kr/pretty"
 	"github.com/pdunnavant/modem-scraper/config"
+	"go.uber.org/zap"
 )
 
 // Scrape scrapes data from the modem.
-func Scrape(config config.Configuration) (*ModemInformation, error) {
-	doc, err := getDocumentFromURL(config.Modem.Url + "/cmconnectionstatus.html")
+func Scrape(logger *zap.Logger, config config.Configuration) (*ModemInformation, error) {
+	doc, err := getDocumentFromURL(logger, config.Modem.Url+"/cmconnectionstatus.html")
 	if err != nil {
 		return nil, err
 	}
 	connectionStatus := scrapeConnectionStatus(doc)
 
-	doc, err = getDocumentFromURL(config.Modem.Url + "/cmswinfo.html")
+	doc, err = getDocumentFromURL(logger, config.Modem.Url+"/cmswinfo.html")
 	if err != nil {
 		return nil, err
 	}
 	softwareInformation := scrapeSoftwareInformation(doc)
 
-	doc, err = getDocumentFromURL(config.Modem.Url + "/cmeventlog.html")
+	doc, err = getDocumentFromURL(logger, config.Modem.Url+"/cmeventlog.html")
 	if err != nil {
 		return nil, err
 	}
-	eventLog := scrapeEventLogs(doc)
+	eventLog := scrapeEventLogs(logger, doc)
 
 	modemInformation := ModemInformation{
 		ConnectionStatus:    *connectionStatus,
 		SoftwareInformation: *softwareInformation,
 		EventLog:            eventLog,
 	}
-	// fmt.Printf("%# v", pretty.Formatter(modemInformation))
 
 	return &modemInformation, nil
 }
 
-func getDocumentFromURL(url string) (*goquery.Document, error) {
-	fmt.Printf("Grabbing [%s]...\n", url)
+func getDocumentFromURL(logger *zap.Logger, url string) (*goquery.Document, error) {
+	logger.Debug(fmt.Sprintf("grabbing %s", url),
+		zap.String("op", "scrape.getDocumentFromURL"),
+	)
 
 	start := time.Now()
 
@@ -63,7 +64,9 @@ func getDocumentFromURL(url string) (*goquery.Document, error) {
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Got [%s]. (Took %s.)\n", url, elapsed)
+	logger.Debug(fmt.Sprintf("got %s, took %s", url, elapsed),
+		zap.String("op", "scrape.getDocumentFromURL"),
+	)
 
 	return doc, nil
 }

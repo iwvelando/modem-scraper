@@ -7,6 +7,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	_ "github.com/influxdata/influxdb1-client" // this is important because of a bug in go mod
 	client "github.com/influxdata/influxdb1-client/v2"
+	"go.uber.org/zap"
 )
 
 const (
@@ -45,7 +46,7 @@ func (e EventLog) ToInfluxPoints() ([]*client.Point, error) {
 
 const eventLogTableSelector = "#bg3 > div.container > div.content > form > center > table"
 
-func scrapeEventLogs(doc *goquery.Document) []EventLog {
+func scrapeEventLogs(logger *zap.Logger, doc *goquery.Document) []EventLog {
 	eventLogTable := doc.Find(eventLogTableSelector)
 	eventLogTableTbody := eventLogTable.Children()
 	eventLogTableTbodyRows := eventLogTableTbody.Children()
@@ -55,14 +56,14 @@ func scrapeEventLogs(doc *goquery.Document) []EventLog {
 		// Skip the "title" row as well as the "header" row.
 		// These are both regular old <tr> rows on this page.
 		if index > 0 {
-			eventLogs = append(eventLogs, makeEventLog(row))
+			eventLogs = append(eventLogs, makeEventLog(logger, row))
 		}
 	})
 
 	return eventLogs
 }
 
-func makeEventLog(selection *goquery.Selection) EventLog {
+func makeEventLog(logger *zap.Logger, selection *goquery.Selection) EventLog {
 	rowData := selection.Children()
 	eventLog := EventLog{
 		DateTime:    rowData.Get(0).FirstChild.Data,
@@ -71,20 +72,23 @@ func makeEventLog(selection *goquery.Selection) EventLog {
 		Description: rowData.Get(3).FirstChild.Data,
 	}
 
-	eventLog.DateTime, _ = formatTime(eventLog.DateTime)
+	eventLog.DateTime = formatTime(logger, eventLog.DateTime)
 
 	return eventLog
 }
 
-func formatTime(datetime string) (string, error) {
+func formatTime(logger *zap.Logger, datetime string) string {
 	now := time.Now()
 	zone, _ := now.Zone()
 	t, err := time.Parse(dateTimeLayout, datetime+" "+zone)
 	if err != nil {
-		fmt.Println(err)
-		return datetime, err
+		logger.Error("failed to parse time",
+			zap.String("op", "scrape.formatTime"),
+			zap.Error(err),
+		)
+		return datetime
 	}
-	return t.Format(time.RFC3339), nil
+	return t.Format(time.RFC3339)
 }
 
 func buildEventLogPoints(logs []EventLog) ([]*client.Point, error) {

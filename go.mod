@@ -16,5 +16,6 @@ require (
 	github.com/spf13/viper v1.4.0
 	github.com/stretchr/testify v1.2.2
 	github.com/uudashr/gopkgs v2.0.1+incompatible // indirect
+	go.uber.org/zap v1.10.0
 	golang.org/x/tools v0.0.0-20190830223141-573d9926052a // indirect
 )

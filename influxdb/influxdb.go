@@ -8,15 +8,19 @@ import (
 	client "github.com/influxdata/influxdb1-client/v2"
 	"github.com/pdunnavant/modem-scraper/config"
 	"github.com/pdunnavant/modem-scraper/scrape"
+	"go.uber.org/zap"
 )
 
 // Publish publishes the data within modemInformation to
 // the InfluxDB server configuration within the given
 // configuration.
-func Publish(config config.InfluxDB, modemInformation scrape.ModemInformation) error {
+func Publish(logger *zap.Logger, config config.InfluxDB, modemInformation scrape.ModemInformation) error {
 	start := time.Now()
 
-	fmt.Printf("Connecting to InfluxDB server [%s]...\n", config.Url)
+	logger.Debug(fmt.Sprintf("connecting to InfluxDB server %s", config.Url),
+		zap.String("op", "influxdb.Publish"),
+	)
+
 	influx, err := client.NewHTTPClient(client.HTTPConfig{
 		Addr:     config.Url,
 		Username: config.Username,
@@ -37,19 +41,18 @@ func Publish(config config.InfluxDB, modemInformation scrape.ModemInformation) e
 	}
 	batchPoints.AddPoints(points)
 
-	fmt.Printf("Writing [%d] data points to InfluxDB database [%s]...\n", len(points), config.Database)
+	logger.Debug(fmt.Sprintf("writing %d data points to InfluxDB database %s", len(points), config.Database),
+		zap.String("op", "influxdb.Publish"),
+	)
 	err = influx.Write(batchPoints)
 	if err != nil {
 		return fmt.Errorf("error writing data to InfluxDB: %s", err.Error())
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Finished writing to InfluxDB. (Took %s.)\n", elapsed)
+	logger.Debug(fmt.Sprintf("finished writing to InfluxDB, took %s", elapsed),
+		zap.String("op", "influxdb.Publish"),
+	)
 
 	return nil
-}
-
-func makeAddr(hostname string, port string) string {
-	// TODO: allow specifying useSsl in config
-	return fmt.Sprintf("http://%s:%s", hostname, port)
 }

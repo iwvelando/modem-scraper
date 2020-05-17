@@ -8,9 +8,9 @@ import (
 	"github.com/pdunnavant/modem-scraper/config"
 	"github.com/pdunnavant/modem-scraper/scrape"
 
-	"github.com/boltdb/bolt"
-
 	"github.com/OneOfOne/xxhash"
+	"github.com/boltdb/bolt"
+	"go.uber.org/zap"
 )
 
 // PruneEventLogs queries BoltDB for matching logs and removes them from
@@ -19,8 +19,7 @@ func PruneEventLogs(config config.BoltDB, modemInformation scrape.ModemInformati
 
 	db, err := bolt.Open(config.Path, 0600, nil)
 	if err != nil {
-		fmt.Println(err)
-		return &modemInformation, nil
+		return &modemInformation, fmt.Errorf("error opening BoltDB at %s: %s", config.Path, err.Error())
 	}
 	defer db.Close()
 
@@ -32,14 +31,13 @@ func PruneEventLogs(config config.BoltDB, modemInformation scrape.ModemInformati
 		return nil
 	})
 	if err != nil {
-		fmt.Println(err)
+		return &modemInformation, fmt.Errorf("error creating BoltDB EventLogs bucket: %s", err.Error())
 	}
 
 	var newEventLog []scrape.EventLog
 	for _, log := range modemInformation.EventLog {
 		hash := HashLog(log)
 		if !AlreadyLogged(db, log.DateTime, hash) {
-			//fmt.Printf("Preserving element %s\n", hash)
 			newEventLog = append(newEventLog, log)
 		}
 	}
@@ -50,32 +48,40 @@ func PruneEventLogs(config config.BoltDB, modemInformation scrape.ModemInformati
 
 // UpdateEventLogs queries BoltDB to write in the record of logs that have been
 // successfully written to InfluxDB and/or MQTT so that we do not rewrite later
-func UpdateEventLogs(config config.BoltDB, modemInformation scrape.ModemInformation) error {
+func UpdateEventLogs(logger *zap.Logger, config config.BoltDB, modemInformation scrape.ModemInformation) error {
 
 	db, err := bolt.Open(config.Path, 0600, nil)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return fmt.Errorf("error opening BoltDB at %s: %s", config.Path, err.Error())
 	}
 	defer db.Close()
 
-	db.Update(func(tx *bolt.Tx) error {
+	err = db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("EventLogs"))
 		if err != nil {
 			return err
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("error creating BoltDB EventLogs bucket: %s", err.Error())
+	}
 
 	hashMap := ArrangeHashes(modemInformation.EventLog)
-	hashMap = AppendFromExisting(db, hashMap)
+	hashMap, err = AppendFromExisting(db, hashMap)
+	if err != nil {
+		return err
+	}
 
 	db.Batch(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("EventLogs"))
 		for dateTime, hashes := range hashMap {
 			hashesJson, err := json.Marshal(hashes)
 			if err != nil {
-				fmt.Println(err)
+				logger.Error("failed to marshal hashes",
+					zap.String("op", "boltdb.UpdateEventLogs"),
+					zap.Error(err),
+				)
 				continue
 			}
 			err = b.Put([]byte(dateTime), hashesJson)
@@ -127,17 +133,16 @@ func HashLog(log scrape.EventLog) string {
 	return logConcatHash
 }
 
-func AppendFromExisting(db *bolt.DB, hashMap map[string][]string) map[string][]string {
+func AppendFromExisting(db *bolt.DB, hashMap map[string][]string) (map[string][]string, error) {
 
 	var dbHashes []string
 	for dateTime, hashes := range hashMap {
-		db.View(func(tx *bolt.Tx) error {
+		err := db.View(func(tx *bolt.Tx) error {
 			b := tx.Bucket([]byte("EventLogs"))
 			v := b.Get([]byte(dateTime))
 			if v != nil {
 				err := json.Unmarshal(v, &dbHashes)
 				if err != nil {
-					fmt.Println(err)
 					return err
 				}
 				//fmt.Printf("Initial hashes %v\n", dbHashes)
@@ -146,35 +151,38 @@ func AppendFromExisting(db *bolt.DB, hashMap map[string][]string) map[string][]s
 						hashMap[dateTime] = append(hashMap[dateTime], hash)
 					}
 				}
-				//fmt.Printf("Appended hashes %v\n", dbHashes)
 			}
 			return nil
 		})
+		if err != nil {
+			return nil, nil
+		}
 	}
 
-	return hashMap
+	return hashMap, nil
 }
 
 func AlreadyLogged(db *bolt.DB, dateTime string, hash string) bool {
 
 	var dbHashes []string
 	found := false
-	db.View(func(tx *bolt.Tx) error {
+	err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("EventLogs"))
 		v := b.Get([]byte(dateTime))
 		if v != nil {
 			err := json.Unmarshal(v, &dbHashes)
 			if err != nil {
-				fmt.Println(err)
 				return err
 			}
-			//fmt.Println(len(dbHashes))
 			if ElementOf(dbHashes, hash) {
 				found = true
 			}
 		}
 		return nil
 	})
+	if err != nil {
+		found = false
+	}
 
 	return found
 }
